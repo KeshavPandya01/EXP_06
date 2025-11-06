@@ -17,7 +17,8 @@ pipeline {
             steps {
                 dir('user-service') {
                     bat 'npm ci'
-                    bat 'npm test || exit 0' // continue even if tests fail
+                    bat 'npm test -- --forceExit --detectOpenHandles || exit 0'
+ // continue even if tests fail
                 }
                 dir('order-service') {
                     bat 'npm ci'
