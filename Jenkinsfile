@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_REPO = 'KeshavPandya01'
+        //   Your Docker Hub username (namespace)
+        DOCKERHUB_REPO = 'keshavpandya01'
         IMAGE_TAG = "${BUILD_NUMBER}" // Jenkins auto-generates BUILD_NUMBER
     }
 
@@ -15,10 +16,10 @@ pipeline {
 
         stage('Build & Test Services') {
             steps {
+                //   Run npm install and cleanly exit Jest tests
                 dir('user-service') {
                     bat 'npm ci'
                     bat 'npm test -- --forceExit --detectOpenHandles || exit 0'
- // continue even if tests fail
                 }
                 dir('order-service') {
                     bat 'npm ci'
@@ -29,17 +30,19 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                bat "docker build -t %DOCKERHUB_REPO%/user-service:%IMAGE_TAG% ./user-service"
-                bat "docker build -t %DOCKERHUB_REPO%/order-service:%IMAGE_TAG% ./order-service"
+                //   Add docker.io prefix for Docker Hub
+                bat "docker build -t docker.io/%DOCKERHUB_REPO%/user-service:%IMAGE_TAG% ./user-service"
+                bat "docker build -t docker.io/%DOCKERHUB_REPO%/order-service:%IMAGE_TAG% ./order-service"
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
-                    bat "docker push %DOCKERHUB_REPO%/user-service:%IMAGE_TAG%"
-                    bat "docker push %DOCKERHUB_REPO%/order-service:%IMAGE_TAG%"
+                    //   Proper login and push to Docker Hub
+                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin docker.io'
+                    bat "docker push docker.io/%DOCKERHUB_REPO%/user-service:%IMAGE_TAG%"
+                    bat "docker push docker.io/%DOCKERHUB_REPO%/order-service:%IMAGE_TAG%"
                     bat 'docker logout'
                 }
             }
@@ -47,15 +50,17 @@ pipeline {
 
         stage('Deploy') {
             steps {
+                //   Use matching exposed ports for services
                 bat "docker rm -f user-service || exit 0"
                 bat "docker rm -f order-service || exit 0"
-                bat "docker run -d --name user-service -p 3001:3001 %DOCKERHUB_REPO%/user-service:%IMAGE_TAG%"
-                bat "docker run -d --name order-service -p 3002:3002 %DOCKERHUB_REPO%/order-service:%IMAGE_TAG%"
+                bat "docker run -d --name user-service -p 3002:3002 docker.io/%DOCKERHUB_REPO%/user-service:%IMAGE_TAG%"
+                bat "docker run -d --name order-service -p 3001:3001 docker.io/%DOCKERHUB_REPO%/order-service:%IMAGE_TAG%"
             }
         }
 
         stage('Verify') {
             steps {
+                //   Wait until both containers are running
                 bat '''
                 @echo off
                 setlocal enabledelayedexpansion
@@ -102,10 +107,10 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline succeeded. Images pushed and services deployed."
+            echo "  Pipeline succeeded. Images pushed and services deployed successfully!"
         }
         failure {
-            echo "Pipeline failed."
+            echo "Pipeline failed. Check the logs for more details."
         }
     }
 }
