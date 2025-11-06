@@ -22,7 +22,7 @@ pipeline {
                 }
                 dir('order-service') {
                     bat 'npm ci'
-                    'npm test -- --forceExit --detectOpenHandles || exit 0'
+                    bat 'npm test -- --forceExit --detectOpenHandles || exit 0'
                 }
             }
         }
